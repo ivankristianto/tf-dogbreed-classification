@@ -22,6 +22,7 @@ import {IMAGENET_CLASSES} from './dict';
 const MOBILENET_MODEL_PATH =
     // tslint:disable-next-line:max-line-length
     'https://www.ivankristianto.com/10up/dist/dogbreed_models/model.json';
+    //'http://localhost:1234/saved_models/model.json';
 
 const IMAGE_SIZE = 224;
 const TOPK_PREDICTIONS = 10;
@@ -69,14 +70,16 @@ async function predict(imgElement) {
   let startTime2;
   const logits = tf.tidy(() => {
     // tf.browser.fromPixels() returns a Tensor from an image element.
-    const img = tf.browser.fromPixels(imgElement).toFloat();
+    const img = tf.browser.fromPixels(imgElement);
 
-    const offset = tf.scalar(127.5);
-    // Normalize the image from [0, 255] to [-1, 1].
-    const normalized = img.sub(offset).div(offset);
+    // Normalize the image from [0, 225] to [INPUT_MIN, INPUT_MAX]
+    const normalizationConstant = 1.0 / 255.0;
+    const normalized = img.toFloat().mul(normalizationConstant);
+
+    const image = tf.image.resizeBilinear(normalized, [IMAGE_SIZE, IMAGE_SIZE], true);
 
     // Reshape to a single-element batch so we can pass it to predict.
-    const batched = normalized.reshape([1, IMAGE_SIZE, IMAGE_SIZE, 3]);
+    const batched = image.reshape([-1, IMAGE_SIZE, IMAGE_SIZE, 3]);
 
     startTime2 = performance.now();
     // Make a prediction through mobilenet.
