@@ -16,6 +16,7 @@
  */
 
 import * as tf from '@tensorflow/tfjs';
+import * as tfjsWasm from '@tensorflow/tfjs-backend-wasm';
 
 import {IMAGENET_CLASSES} from './dict';
 
@@ -32,6 +33,8 @@ const mobilenetDemo = async () => {
   status('Loading model...');
 
   mobilenet = await tf.loadGraphModel(MOBILENET_MODEL_PATH);
+
+  // mobilenet.summary();
 
   // Warmup the model. This isn't necessary, but makes the first prediction
   // faster. Call `dispose` to release the WebGL memory allocated for the return
@@ -70,7 +73,7 @@ async function predict(imgElement) {
   let startTime2;
   const logits = tf.tidy(() => {
     // tf.browser.fromPixels() returns a Tensor from an image element.
-    const img = tf.browser.fromPixels(imgElement);
+    /*const img = tf.browser.fromPixels(imgElement);
 
     // Normalize the image from [0, 225] to [INPUT_MIN, INPUT_MAX]
     const normalizationConstant = 1.0 / 255.0;
@@ -79,11 +82,16 @@ async function predict(imgElement) {
     const image = tf.image.resizeBilinear(normalized, [IMAGE_SIZE, IMAGE_SIZE], true);
 
     // Reshape to a single-element batch so we can pass it to predict.
-    const batched = image.reshape([-1, IMAGE_SIZE, IMAGE_SIZE, 3]);
+    const batched = image.reshape([-1, IMAGE_SIZE, IMAGE_SIZE, 3]);*/
+
+    let img = tf.browser.fromPixels(imgElement, 3)
+      .resizeBilinear([IMAGE_SIZE, IMAGE_SIZE], false)
+      .expandDims(0)
+      .toFloat()
 
     startTime2 = performance.now();
     // Make a prediction through mobilenet.
-    return mobilenet.predict(batched);
+    return mobilenet.predict(img);
   });
 
   // Convert logits to probabilities and class names.
@@ -165,7 +173,8 @@ function showResults(imgElement, classes) {
   predictionContainer.appendChild(probsContainer);
 
   predictionsElement.insertBefore(
-      predictionContainer, predictionsElement.firstChild);
+      predictionContainer, predictionsElement.firstChild
+  );
 }
 
 const filesElement = document.getElementById('files');
@@ -197,4 +206,7 @@ const status = msg => demoStatusElement.innerText = msg;
 
 const predictionsElement = document.getElementById('predictions');
 
-mobilenetDemo();
+// mobilenetDemo();
+tfjsWasm.setWasmPath(
+    `https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@2.0.0/dist/tfjs-backend-wasm.wasm`);
+tf.setBackend('wasm').then(() => mobilenetDemo());
